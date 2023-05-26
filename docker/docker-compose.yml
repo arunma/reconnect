@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  postgres:
+    container_name: postgresql
+    image: postgres:14.1-alpine
+    command: >
+      -c work_mem=1GB
+      -c maintenance_work_mem=1GB
+      -c max_wal_size=8GB
+    restart: always
+    volumes:
+      - pg-data:/var/lib/postgresql/data:delegated
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
+    env_file:
+      - dev/dev.env
+    tty: true
+    networks:
+      - local
+  mysql:
+    container_name: mysql
+    image: mysql:8.0
+    restart: always
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    env_file:
+      - dev/dev.env
+    tty: true
+    networks:
+      - local
+volumes:
+  pg-data:
+  mysql-data:
+
+networks:
+  local:
+    driver: bridge
