@@ -1,23 +1,19 @@
-use crate::lib::constants;
-use crate::lib::constants::{RANDOM_CITY_COUNTRIES, RANDOM_NAMES};
-use crate::lib::data_generator::DataGenerator;
 use anyhow::anyhow;
 use chrono::prelude::*;
-use log::{debug, error, info, warn};
-use postgres::fallible_iterator::FallibleIterator;
-use postgres::Client;
+use log::error;
 use rand::prelude::SliceRandom;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::error::Error;
+
 use std::fs::{File, OpenOptions};
 use std::io::BufWriter;
 use std::path::Path;
-use std::process::id;
-use std::str::FromStr;
-use std::{env, fs, io};
-use uuid::{uuid, Uuid};
+
+use crate::data_generator::constants::{RANDOM_CITY_COUNTRIES, RANDOM_NAMES};
+use crate::data_generator::{constants, postgres_generator, DataGenerator};
+use postgres::Client;
+use std::{env, io};
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Customer {
@@ -40,15 +36,14 @@ impl PostgresGenerator {
     }
 
     pub fn drop_table(&self, table_name: &str) -> anyhow::Result<()> {
-        let db_host = env::var("POSTGRES_HOST").expect("POSTGRES_HOST not set");
-        let db_port = env::var("POSTGRES_PORT").expect("POSTGRES_PORT not set");
-        let db_name = env::var("POSTGRES_DBNAME").expect("POSTGRES_DBNAME not set");
-        let db_user = env::var("POSTGRES_USER").expect("POSTGRES_USER not set");
-        let db_password = env::var("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD not set");
+        let db_host = env::var("RECON_POSTGRES_HOST").expect("RECON_POSTGRES_HOST not set");
+        let db_port = env::var("RECON_POSTGRES_PORT").expect("RECON_POSTGRES_PORT not set");
+        let db_name = env::var("RECON_POSTGRES_DBNAME").expect("RECON_POSTGRES_DBNAME not set");
+        let db_user = env::var("RECON_POSTGRES_USER").expect("RECON_POSTGRES_USER not set");
+        let db_password = env::var("RECON_POSTGRES_PASSWORD").expect("RECON_POSTGRES_PASSWORD not set");
 
-        let conn_string = format!(
-            "host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}"
-        );
+        let conn_string =
+            format!("host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}");
 
         //Connection
         let mut client = Client::connect(&conn_string, postgres::NoTls).map_err(|e| anyhow!(e))?;
@@ -61,14 +56,14 @@ impl PostgresGenerator {
     fn create_table(&self, client: &mut Client, table_name: &str) -> anyhow::Result<()> {
         let create_table_sql = format!(
             "CREATE TABLE IF NOT EXISTS {table_name} (
-            id INT PRIMARY KEY,
-            uuid VARCHAR(36) NOT NULL,
-            age SMALLINT NOT NULL,
-            first_name VARCHAR(255) NOT NULL,
-            last_name VARCHAR(255) NOT NULL,
-            city VARCHAR(255) NOT NULL,
-            country VARCHAR(255) NOT NULL,
-            updated_at TIMESTAMP
+            ID INT PRIMARY KEY,
+            UUID VARCHAR(36) NOT NULL,
+            AGE SMALLINT NOT NULL,
+            FIRST_NAME VARCHAR(255) NOT NULL,
+            LAST_NAME VARCHAR(255) NOT NULL,
+            CITY VARCHAR(255) NOT NULL,
+            COUNTRY VARCHAR(255) NOT NULL,
+            UPDATED_AT TIMESTAMP
         )"
         );
         client.execute(&create_table_sql, &[]).map_err(|e| {
@@ -78,12 +73,7 @@ impl PostgresGenerator {
         Ok(())
     }
 
-    fn load_csv_file(
-        &self,
-        client: &mut Client,
-        table_name: &str,
-        file_path: &Path,
-    ) -> anyhow::Result<()> {
+    fn load_csv_file(&self, client: &mut Client, table_name: &str, file_path: &Path) -> anyhow::Result<()> {
         println!("File path: {:?}", file_path.canonicalize().unwrap());
         let copy_sql = format!(
             r#"
@@ -96,7 +86,7 @@ impl PostgresGenerator {
 
         let set_sql = "SET datestyle = 'ISO, DMY';";
 
-        client.simple_query(&set_sql).map_err(|e| {
+        client.simple_query(set_sql).map_err(|e| {
             println!("Error: {:?}", e);
             anyhow!(e)
         })?;
@@ -145,15 +135,14 @@ impl DataGenerator for PostgresGenerator {
     }
 
     fn persist_data_to_database(&self, file_path: &Path, table_name: &str) -> anyhow::Result<()> {
-        let db_host = env::var("POSTGRES_HOST").expect("POSTGRES_HOST not set");
-        let db_port = env::var("POSTGRES_PORT").expect("POSTGRES_PORT not set");
-        let db_name = env::var("POSTGRES_DBNAME").expect("POSTGRES_DBNAME not set");
-        let db_user = env::var("POSTGRES_USER").expect("POSTGRES_USER not set");
-        let db_password = env::var("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD not set");
+        let db_host = env::var("RECON_POSTGRES_HOST").expect("RECON_POSTGRES_HOST not set");
+        let db_port = env::var("RECON_POSTGRES_PORT").expect("RECON_POSTGRES_PORT not set");
+        let db_name = env::var("RECON_POSTGRES_DBNAME").expect("RECON_POSTGRES_DBNAME not set");
+        let db_user = env::var("RECON_POSTGRES_USER").expect("RECON_POSTGRES_USER not set");
+        let db_password = env::var("RECON_POSTGRES_PASSWORD").expect("RECON_POSTGRES_PASSWORD not set");
 
-        let conn_string = format!(
-            "host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}"
-        );
+        let conn_string =
+            format!("host={db_host} port={db_port} dbname={db_name} user={db_user} password={db_password}");
 
         //Connection
         let mut client = Client::connect(&conn_string, postgres::NoTls).map_err(|e| anyhow!(e))?;
@@ -186,8 +175,12 @@ impl DataGenerator for PostgresGenerator {
         let mut target_changes = (num_rows as f64 * max_diff_pct) as usize;
         let mut column_indices = vec!["age", "first_name", "last_name", "city", "country"];
         let mut rng = rand::thread_rng();
-
+        let mut header_row = true;
         for record in reader.deserialize() {
+            if header_row {
+                header_row = false;
+                continue;
+            }
             let mut customer: Customer = record?;
             let coin_toss = rng.gen_range(0..=1);
             //Introduce differences up to a maximum of target_rows number of changes
@@ -208,13 +201,13 @@ impl DataGenerator for PostgresGenerator {
                         customer.last_name = new_name.1.into();
                     }
                     "city" => {
-                        let new_city_country = RANDOM_CITY_COUNTRIES
-                            [rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
+                        let new_city_country =
+                            RANDOM_CITY_COUNTRIES[rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
                         customer.city = new_city_country.1.into();
                     }
                     "country" => {
-                        let new_city_country = RANDOM_CITY_COUNTRIES
-                            [rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
+                        let new_city_country =
+                            RANDOM_CITY_COUNTRIES[rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
                         customer.country = new_city_country.0.into();
                     }
                     _ => {

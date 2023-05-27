@@ -16,6 +16,10 @@ services:
       - '5432'
     env_file:
       - .env
+    environment:
+      - POSTGRES_DB=${RECON_POSTGRES_DBNAME}
+      - POSTGRES_USER=${RECON_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${RECON_POSTGRES_PASSWORD}
     tty: true
     networks:
       - local

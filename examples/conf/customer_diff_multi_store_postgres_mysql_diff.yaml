@@ -1,0 +1,39 @@
+name: customer_diff_multi_store
+left:
+    connection_uri: mysql://{{mysql_test_username}}:{{mysql_test_password}}@{{mysql_test_host}}:{{mysql_test_port}}/mysql
+    schema: mysql
+    table: customer1
+    alias: c1
+    key:
+        - id1
+    satellite_fields:
+        - country
+        - city
+    compare_fields:
+        - age1
+        - firstname
+    filter_conditions:
+    exclude_fields:
+    date_fields:
+right:
+    connection_uri: postgresql://{{postgres_test_username}}:{{postgres_test_password}}@{{postgres_test_host}}:{{postgres_test_port}}/postgres?1=1
+    schema: public
+    table: customer2
+    alias: c2
+    key:
+        - id2
+    satellite_fields:
+        - country
+        - city
+    compare_fields:
+        - age2
+        - firstname
+    filter_conditions:
+    exclude_fields:
+    date_fields:
+result:
+    connection_uri: mysql://{{mysql_test_username}}:{{mysql_test_password}}@{{mysql_test_host}}:{{mysql_test_port}}/mysql
+    schema: mysql
+    diff_table: customer_diff_multi_store_result
+    summary_table: recon_summary
+

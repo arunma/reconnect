@@ -1,0 +1,22 @@
+[package]
+name = "reconnect-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.71"
+dotenv = "0.15.0"
+dsn = "1.0.2"
+lazy_static = "1.4.0"
+postgres = { version = "0.19", features = ["with-chrono-0_4"] }
+#handlebars = "4.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+tera = "1.18.1"
+
+[[bench]]
+name = "single_source_postgres"
+harness = false
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }

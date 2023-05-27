@@ -1,0 +1,36 @@
+name: customer_diff
+left:
+    connection_uri: postgresql://{{postgres_test_username}}:{{postgres_test_password}}@{{postgres_test_host}}:{{postgres_test_port}}/postgres
+    schema: public
+    table: customer1
+    alias: c1
+    key:
+        - id1
+    satellite_fields:
+        - country
+        - city
+    compare_fields:
+        - age1
+    filter_conditions:
+        - date(updated_at) = '1970-01-15'
+    exclude_fields:
+    date_fields:
+right:
+    connection_uri: snowflake://{{sf_username}}:{{sf_password}}@{{sf_account}}/test/public?warehouse={{sf_warehouse}}&role={{sf_role}}
+    schema: public
+    table: customer2
+    alias: c2
+    key:
+        - id2
+    satellite_fields:
+    compare_fields:
+        - age2
+    filter_conditions:
+        - date(updated_at) = '1970-01-15'
+    exclude_fields:
+    date_fields:
+result:
+    connection_uri: postgresql://{{postgres_test_username}}:{{postgres_test_password}}@{{postgres_test_host}}:{{postgres_test_port}}/postgres
+    schema: public
+    diff_table: customer_diff_result
+    summary_table: recon_summary

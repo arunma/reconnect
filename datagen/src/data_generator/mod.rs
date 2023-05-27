@@ -1,7 +1,8 @@
 use std::io;
 use std::path::Path;
 
-pub mod postgres;
+pub mod constants;
+pub mod postgres_generator;
 
 pub trait DataGenerator {
     fn generate_data_as_csv(&self, num_rows: usize, file_path: &Path) -> io::Result<()>;

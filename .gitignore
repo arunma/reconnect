@@ -1,3 +1,4 @@
 /target
 .idea
 /bench_data/**
+.env

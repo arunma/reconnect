@@ -1,10 +1,8 @@
-mod lib;
-
-use crate::lib::data_generator::postgres::PostgresGenerator;
-use crate::lib::data_generator::DataGenerator;
+use bench::data_generator::postgres_generator::PostgresGenerator;
+use bench::data_generator::DataGenerator;
+use std::fs;
 use std::path::Path;
 use std::time::Instant;
-use std::{env, fs, io};
 
 fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
@@ -12,7 +10,7 @@ fn main() -> anyhow::Result<()> {
 
     let start = Instant::now();
 
-    let num_rows = 10_000;
+    let num_rows = 10_000_000;
     let customer1 = Path::new("bench_data/customer1.csv");
     let customer2 = Path::new("bench_data/customer2.csv");
     fs::create_dir_all(customer1.parent().unwrap())?;
@@ -23,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     datagen.drop_table("customer1")?;
     datagen.drop_table("customer2")?;
 
-    datagen.generate_data_as_csv(10000, customer1)?;
+    datagen.generate_data_as_csv(num_rows, customer1)?;
     //fs::copy(customer1, customer2).expect("Unable to copy file");
     datagen.introduce_differences_in_csv(customer1, customer2, num_rows, 0.20)?;
 
