@@ -7,13 +7,13 @@ SELECT
     ,    {{ macro_select_with_alias::macro_select_with_alias(fields=right_key, alias=right_alias) }}
     ,   CASE
             {% for lkey in left_key %}
-                WHEN ({{ left_alias }}.{{ lkey}}) is null THEN '+'
+                WHEN ({{ left_alias }}.{{ lkey}}) is null THEN 'RO'
             {% endfor %}
 
             {% for rkey in right_key %}
-                WHEN ({{ right_alias }}.{{ rkey}}) is null THEN '-'
+                WHEN ({{ right_alias }}.{{ rkey}}) is null THEN 'LO'
             {% endfor %}
-            ELSE '*'
+            ELSE 'DF'
         END AS status
         {% if left_satellite_fields %}
     ,   {{ macro_select_with_alias::macro_select_with_alias (fields=left_satellite_fields, alias=left_alias) }}
@@ -51,9 +51,9 @@ WHERE
     )
     {% if left_filter_conditions %}
 AND
-    {{ macro_filter_conditions::macro_filter_conditions(left_filter_conditions=left_filter_conditions) }}
+    {{ macro_filter_conditions::macro_filter_conditions(filters=left_filter_conditions) }}
     {% endif %}
     {% if right_filter_conditions %}
 AND
-    {{ macro_filter_conditions::macro_filter_conditions(right_filter_conditions=right_filter_conditions) }}
+    {{ macro_filter_conditions::macro_filter_conditions(filters=right_filter_conditions) }}
     {% endif %}

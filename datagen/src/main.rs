@@ -10,7 +10,7 @@ fn main() -> anyhow::Result<()> {
 
     let start = Instant::now();
 
-    let num_rows = 10_000_000;
+    let num_rows = 10_000;
     let customer1 = Path::new("bench_data/customer1.csv");
     let customer2 = Path::new("bench_data/customer2.csv");
     fs::create_dir_all(customer1.parent().unwrap())?;

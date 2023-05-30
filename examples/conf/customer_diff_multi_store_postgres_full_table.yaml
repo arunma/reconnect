@@ -1,0 +1,38 @@
+name: customer_diff
+left:
+  connection_uri: pgsql://{{RECON_POSTGRES_USER}}:{{RECON_POSTGRES_PASSWORD}}@tcp({{RECON_POSTGRES_HOST}}:{{RECON_POSTGRES_PORT}})/postgres?1=1
+  schema: public
+  table: customer1
+  alias: c1
+  key:
+    - id
+  satellite_fields:
+    - country
+    - city
+  compare_fields:
+    - age
+    - first_name
+  filter_conditions:
+    - id>=200
+  exclude_fields:
+  date_fields:
+right:
+  connection_uri: pgsql://{{RECON_POSTGRES_USER}}:{{RECON_POSTGRES_PASSWORD}}@tcp({{RECON_POSTGRES_HOST}}:{{RECON_POSTGRES_PORT}})/postgres?1=2
+  schema: public
+  table: customer2
+  alias: c2
+  key:
+    - id
+  satellite_fields:
+  compare_fields:
+    - age
+    - first_name
+  filter_conditions:
+    - id>=200
+  exclude_fields:
+  date_fields:
+result:
+  connection_uri: pgsql://{{RECON_POSTGRES_USER}}:{{RECON_POSTGRES_PASSWORD}}@tcp({{RECON_POSTGRES_HOST}}:{{RECON_POSTGRES_PORT}})/postgres?1=2
+  schema: public
+  diff_table: customer_diff_result
+  summary_table: recon_summary

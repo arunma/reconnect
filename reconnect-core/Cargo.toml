@@ -9,10 +9,13 @@ dotenv = "0.15.0"
 dsn = "1.0.2"
 lazy_static = "1.4.0"
 postgres = { version = "0.19", features = ["with-chrono-0_4"] }
-#handlebars = "4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 tera = "1.18.1"
+chrono = { version = "0.4", features = ["serde"] }
+env_logger = "0.10"
+log = "0.4.0"
+rust_decimal = { version = "1.29.1", features = ["db-postgres", "db-tokio-postgres"] }
 
 [[bench]]
 name = "single_source_postgres"

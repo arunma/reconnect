@@ -3,7 +3,6 @@ use crate::differ::DiffResult;
 use crate::store;
 use std::any::Any;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 pub struct SingleStoreDiffer {
     config: DiffConfig,
@@ -18,7 +17,7 @@ impl SingleStoreDiffer {
     pub fn diff(&self, params: HashMap<String, String>) -> anyhow::Result<DiffResult> {
         let left = self.config.left.clone();
         let right = self.config.right.clone();
-        let store = store::get_store(&left)?;
+        let mut store = store::get_store(&left)?;
         store.diff_datasets(&left, &right)
     }
 

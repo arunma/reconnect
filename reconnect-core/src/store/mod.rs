@@ -27,6 +27,13 @@ pub fn get_store(config: &TableConfig) -> anyhow::Result<PostgresStore> {
     let password = dsn.password.expect("Unable to parse dsn.password from connection_uri");
     let database = dsn.database.expect("Unable to parse dsn.database from connection_uri");
 
-    let store = PostgresStore::new(host, port, username, password, database, None);
-    Ok(store)
+    PostgresStore::new(host, port, username, password, database, None)
+}
+
+#[derive(Debug)]
+pub struct Segment {
+    pub count: usize,
+    pub checksum: String,
+    pub min: String,
+    pub max: String,
 }
