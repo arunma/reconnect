@@ -6,15 +6,15 @@ Lightweight and highly performant reconciliation toolkit
 
 ### Overall distribution
 
-![Violin](https://img.shields.io/badge/benchmark-0.1.0-blue.svg)
+![Violin](https://github.com/arunma/reconnect/blob/master/reconnect-bench/images/Violin.png)
 
 ### Both datasets residing in a single database
 
-![Violin](https://img.shields.io/badge/benchmark-0.1.0-blue.svg)
+![Single store](https://github.com/arunma/reconnect/blob/master/reconnect-bench/images/single_store.png)
 
 ### Datasets residing in different databases
 
-![Violin](https://img.shields.io/badge/benchmark-0.1.0-blue.svg)
+![Multi store](https://github.com/arunma/reconnect/blob/master/reconnect-bench/images/multi_store.png)
 
 
 
