@@ -1,6 +1,8 @@
 use crate::config::TableConfig;
 use crate::store::postgres_store::PostgresStore;
 use lazy_static::lazy_static;
+use std::any::Any;
+use std::collections::HashMap;
 use tera::Tera;
 
 pub mod postgres_store;
@@ -37,3 +39,5 @@ pub struct Segment {
     pub min: String,
     pub max: String,
 }
+
+pub type RowResult = HashMap<String, HashMap<String, String>>;

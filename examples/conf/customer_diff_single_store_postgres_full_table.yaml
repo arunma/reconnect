@@ -1,4 +1,4 @@
-name: customer_diff
+name: customer_diff_single_store_postgres_full_table
 left:
   connection_uri: pgsql://{{RECON_POSTGRES_USER}}:{{RECON_POSTGRES_PASSWORD}}@tcp({{RECON_POSTGRES_HOST}}:{{RECON_POSTGRES_PORT}})/postgres
   schema: public
@@ -12,6 +12,9 @@ left:
   compare_fields:
     - age
     - first_name
+    - last_name
+    - city
+    - country
   filter_conditions:
   exclude_fields:
   date_fields:
@@ -26,6 +29,9 @@ right:
   compare_fields:
     - age
     - first_name
+    - last_name
+    - city
+    - country
   filter_conditions:
   exclude_fields:
   date_fields:

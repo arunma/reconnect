@@ -20,7 +20,7 @@ pub fn test_single_store_diff() -> anyhow::Result<()> {
 
     //Render template
     let query = CONF_TEMPLATES
-        .render("customer_diff_single_store_postgres.yaml", &context)
+        .render("customer_diff_single_store_postgres_full_table.yaml", &context)
         .map_err(|e| {
             eprintln!("Error: {:?}", e);
             anyhow!(e)
@@ -42,13 +42,20 @@ pub fn test_single_store_diff() -> anyhow::Result<()> {
     assert_eq!(right.table, "customer2");
     assert_eq!(left.key, right.key);
     assert_eq!(left.satellite_fields, vec!["country", "city"]);
-    assert_eq!(left.compare_fields, vec!["age", "first_name"]);
-    assert_eq!(right.compare_fields, vec!["age", "first_name"]);
+    //TODO - Write another testcase with just some of the fields to compare
+    assert_eq!(
+        left.compare_fields,
+        vec!["age", "first_name", "last_name", "city", "country"]
+    );
+    assert_eq!(
+        right.compare_fields,
+        vec!["age", "first_name", "last_name", "city", "country"]
+    );
 
     //Generate Single table template
     let differ = Differ::new(config);
     let diff_result = differ.diff(std::collections::HashMap::new())?;
-    println!("Diff Result: {:?}", diff_result);
+    println!("Diff Result count: {:?}", diff_result.rows.len());
 
     let end = start.elapsed();
     println!("Time elapsed: {:?}", end);

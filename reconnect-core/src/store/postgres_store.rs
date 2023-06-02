@@ -1,9 +1,10 @@
 use crate::config::TableConfig;
 use crate::differ::DiffResult;
-use crate::store::{Segment, SQL_TEMPLATES};
+use crate::store::{RowResult, Segment, SQL_TEMPLATES};
 use anyhow::anyhow;
 use anyhow::Result as AResult;
 use chrono::Utc;
+use lazy_static::lazy_static;
 use log::{info, warn};
 use postgres::{Client, Row};
 use rust_decimal::Decimal;
@@ -13,6 +14,9 @@ use std::collections::{HashMap, HashSet};
 use tera::Context;
 
 //FIXME - Most methods must be pub(crate)
+lazy_static! {
+    static ref VALUE_NOT_FOUND: String = String::from("VALUE_NOT_FOUND");
+}
 
 pub struct PostgresStore {
     host: String,
@@ -98,6 +102,7 @@ impl PostgresStore {
         context.insert("right_filter_conditions", &right.filter_conditions);
         //println!("Context is ready. Attempting to render SQL");
         let query = SQL_TEMPLATES.render("single_store_diff_postgres.sql", &context)?;
+        //println!("Query is ready. Attempting to execute \n {}", query);
         let rows = self.client.query(query.as_str(), &[])?;
 
         let headers = rows[0]
@@ -232,5 +237,35 @@ impl PostgresStore {
         }
 
         Ok(kcs)
+    }
+
+    pub(crate) fn get_rows_by_keys(&mut self, config: &TableConfig, diff_keys: &HashSet<String>) -> AResult<RowResult> {
+        let mut context = Context::new();
+        context.insert("table", &config.table);
+        context.insert("alias", &config.alias.to_uppercase());
+        context.insert("key", &config.key);
+        context.insert("compare_fields", &config.compare_fields);
+        context.insert("satellite_fields", &config.satellite_fields);
+        context.insert("filter_conditions", &config.filter_conditions);
+        context.insert("diff_keys", &diff_keys);
+
+        let query = SQL_TEMPLATES.render("get_rows_by_keys_postgres.sql", &context).unwrap();
+
+        info!("Get rows by keys query: {}", query);
+
+        let rows = self
+            .client
+            .query(&query, &[])
+            .map_err(|e| anyhow!("Error getting rows by keys: {}", e))?;
+
+        let mut row_results = HashMap::new();
+        for row in rows {
+            //FIXME - this fetches just the concatenated rows
+            let row_map = self.row_to_map(&row);
+            let key = row_map.get("KEY").unwrap().clone();
+            row_results.insert(key, row_map);
+        }
+
+        Ok(row_results)
     }
 }

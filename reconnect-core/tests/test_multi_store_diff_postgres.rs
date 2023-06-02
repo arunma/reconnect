@@ -47,7 +47,7 @@ pub fn test_multi_store_diff() -> anyhow::Result<()> {
         eprintln!("Error: {:?}", diff_result);
     }
     let diff_result = diff_result?;
-    println!("Diff Result: {:?}", diff_result);
+    println!("Diff Result count: {:?}", diff_result.rows.len());
 
     let end = start.elapsed();
     println!("Time elapsed: {:?}", end);

@@ -12,6 +12,8 @@ use std::path::Path;
 use crate::data_generator::constants::{RANDOM_CITY_COUNTRIES, RANDOM_NAMES};
 use crate::data_generator::{constants, postgres_generator, DataGenerator};
 use postgres::Client;
+use std::collections::HashSet;
+use std::thread::current;
 use std::{env, io};
 use uuid::Uuid;
 
@@ -19,7 +21,7 @@ use uuid::Uuid;
 struct Customer {
     id: usize,
     uuid: String,
-    age: u8,
+    age: u16,
     first_name: String,
     last_name: String,
     city: String,
@@ -58,7 +60,7 @@ impl PostgresGenerator {
             "CREATE TABLE IF NOT EXISTS {table_name} (
             ID INT PRIMARY KEY,
             UUID VARCHAR(36) NOT NULL,
-            AGE SMALLINT NOT NULL,
+            AGE INT2 NOT NULL,
             FIRST_NAME VARCHAR(255) NOT NULL,
             LAST_NAME VARCHAR(255) NOT NULL,
             CITY VARCHAR(255) NOT NULL,
@@ -119,7 +121,7 @@ impl DataGenerator for PostgresGenerator {
             csv_writer.serialize(Customer {
                 id: i + 1,
                 uuid: Uuid::new_v4().to_string(),
-                age: rand::random::<u8>(),
+                age: rand::random::<u8>() as u16,
                 first_name: name.0.into(),
                 last_name: name.1.into(),
                 city: city_country.1.into(),
@@ -167,58 +169,60 @@ impl DataGenerator for PostgresGenerator {
         source_path: &Path,
         target_path: &Path,
         num_rows: usize,
-        max_diff_pct: f64,
+        diff_pct: f64,
     ) -> anyhow::Result<()> {
         let source_file = File::open(source_path).unwrap();
         let mut reader = csv::Reader::from_reader(source_file);
         let mut writer = csv::Writer::from_path(target_path).unwrap();
-        let mut target_changes = (num_rows as f64 * max_diff_pct) as usize;
+        let target_change_count = (num_rows as f64 * diff_pct) as usize;
+        let target_ids = pick_random_ids(target_change_count, num_rows);
+        println!("Target id count : {}", target_ids.len());
         let mut column_indices = vec!["age", "first_name", "last_name", "city", "country"];
         let mut rng = rand::thread_rng();
-        let mut header_row = true;
+        let mut count = 1;
         for record in reader.deserialize() {
-            if header_row {
-                header_row = false;
-                continue;
-            }
             let mut customer: Customer = record?;
-            let coin_toss = rng.gen_range(0..=1);
-            //Introduce differences up to a maximum of target_rows number of changes
-            if coin_toss == 0 && target_changes > 0 {
+            if target_ids.contains(&customer.id) {
                 column_indices.shuffle(&mut rng);
-                target_changes -= 1;
                 match column_indices[0] {
                     "age" => {
-                        let new_age = rng.gen_range(0..=100);
-                        customer.age = new_age;
+                        //let new_age = rng.gen_range(0..=100);
+                        //customer.age = new_age;
+                        customer.age = 1000;
                     }
                     "first_name" => {
                         let new_name = RANDOM_NAMES[rand::random::<usize>() % RANDOM_NAMES.len()];
-                        customer.first_name = new_name.0.into();
+                        customer.first_name = format!("{}_{}", new_name.0, count);
                     }
                     "last_name" => {
                         let new_name = RANDOM_NAMES[rand::random::<usize>() % RANDOM_NAMES.len()];
-                        customer.last_name = new_name.1.into();
+                        //customer.last_name = new_name.1.into();
+                        customer.last_name = format!("{}_{}", new_name.1, count);
                     }
                     "city" => {
                         let new_city_country =
                             RANDOM_CITY_COUNTRIES[rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
-                        customer.city = new_city_country.1.into();
+                        //customer.city = new_city_country.1.into();
+                        customer.city = format!("{}_{}", new_city_country.1, count);
                     }
                     "country" => {
                         let new_city_country =
                             RANDOM_CITY_COUNTRIES[rand::random::<usize>() % RANDOM_CITY_COUNTRIES.len()];
-                        customer.country = new_city_country.0.into();
+                        //customer.country = new_city_country.0.into();
+                        customer.country = format!("{}_{}", new_city_country.0, count);
                     }
                     _ => {
                         panic!("Invalid column name")
                     }
                 }
+                count += 1;
             }
             writer.serialize(customer)?;
         }
 
         writer.flush().unwrap();
+
+        println!("Total count of differences: {}", count - 1);
         Ok(())
     }
 
@@ -260,4 +264,14 @@ impl DataGenerator for PostgresGenerator {
         }
         Ok(())
     }*/
+}
+
+fn pick_random_ids(count: usize, max_id: usize) -> HashSet<usize> {
+    let mut random_ids = HashSet::with_capacity(count);
+    let mut rnd = rand::thread_rng();
+    while random_ids.len() < count {
+        let id = rnd.gen_range(1..=max_id);
+        random_ids.insert(id);
+    }
+    random_ids
 }

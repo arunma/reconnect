@@ -17,9 +17,6 @@ env_logger = "0.10"
 log = "0.4.0"
 rust_decimal = { version = "1.29.1", features = ["db-postgres", "db-tokio-postgres"] }
 
-[[bench]]
-name = "single_source_postgres"
-harness = false
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+env_logger = "0.10"
