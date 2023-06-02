@@ -4,7 +4,7 @@ use reconnect_core::differ::Differ;
 
 pub mod postgres_full_table;
 
-pub const NUM_ROWS_TO_TEST: [usize; 1] = [10_000]; //, 100_000, 1_000_000, 10_000_000];
+pub const NUM_ROWS_TO_TEST: [usize; 4] = [10_000, 100_000, 1_000_000, 10_000_000];
 pub const DIFF_PCT: f64 = 0.10;
 
 pub fn diff_call(config_string: String) -> anyhow::Result<()> {
