@@ -1,11 +1,12 @@
 use crate::helpers::CONF_TEMPLATES;
 use anyhow::anyhow;
 use dotenv::dotenv;
-use reconnect_core::config::{DiffConfig, TableConfig};
+use reconnect_core::config::DiffConfig;
 use reconnect_core::differ::Differ;
+use reconnect_datagen::prepare_database;
 use std::env;
 use std::time::Instant;
-use tera::{Context, Tera};
+use tera::Context;
 
 pub mod helpers;
 
@@ -13,6 +14,8 @@ pub mod helpers;
 pub fn test_multi_store_diff() -> anyhow::Result<()> {
     //Populate template with credential variables
     dotenv().ok();
+    prepare_database(10_000)?;
+
     let mut context = Context::new();
     for (key, value) in env::vars() {
         context.insert(key, &value);
@@ -42,18 +45,11 @@ pub fn test_multi_store_diff() -> anyhow::Result<()> {
 
     //Generate Single table template
     let differ = Differ::new(config);
-    let diff_result = differ.diff(std::collections::HashMap::new());
-    if diff_result.is_err() {
-        eprintln!("Error: {:?}", diff_result);
-    }
-    let diff_result = diff_result?;
-    println!("Diff Result count: {:?}", diff_result.rows.len());
+    let diff_result = differ.diff(std::collections::HashMap::new())?;
+    assert_eq!(1000, diff_result.rows.len());
 
     let end = start.elapsed();
     println!("Time elapsed: {:?}", end);
-    //Run SQL and generate diff results
-
-    //Assert diff results
 
     Ok(())
 }

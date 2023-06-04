@@ -13,8 +13,8 @@ pub fn prepare_database(num_rows: usize) -> AResult<()> {
 
     let start = Instant::now();
 
-    let customer1 = Path::new("../bench_data/customer1.csv");
-    let customer2 = Path::new("../bench_data/customer2.csv");
+    let customer1 = Path::new("../../../bench_data/customer1.csv");
+    let customer2 = Path::new("../../../bench_data/customer2.csv");
     fs::create_dir_all(customer1.parent().unwrap())?;
 
     let datagen = PostgresGenerator::new();

@@ -1,5 +1,5 @@
 use anyhow::Result as AResult;
-use datagen::prepare_database;
+use reconnect_datagen::prepare_database;
 
 fn main() -> AResult<()> {
     let num_rows = 10_000;

@@ -19,4 +19,4 @@ rust_decimal = { version = "1.29.1", features = ["db-postgres", "db-tokio-postgr
 
 
 [dev-dependencies]
-env_logger = "0.10"
+reconnect-datagen = { path = "../reconnect-datagen" }
