@@ -1,4 +1,4 @@
-use crate::config::{DiffConfig, TableConfig};
+use crate::config::{DiffConfig};
 use crate::differ::DiffResult;
 use crate::store;
 use crate::store::postgres_store::PostgresStore;

@@ -3,7 +3,7 @@ use crate::multi_store_differ::MultiStoreDiffer;
 use crate::single_store_differ::SingleStoreDiffer;
 use anyhow::Result as AResult;
 use log::info;
-use std::any::Any;
+
 use std::collections::HashMap;
 
 #[derive(Debug)]

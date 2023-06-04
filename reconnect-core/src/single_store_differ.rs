@@ -1,7 +1,7 @@
-use crate::config::{DiffConfig, TableConfig};
+use crate::config::{DiffConfig};
 use crate::differ::DiffResult;
 use crate::store;
-use std::any::Any;
+
 use std::collections::HashMap;
 
 pub struct SingleStoreDiffer {
@@ -14,7 +14,7 @@ impl SingleStoreDiffer {
     }
 
     //TODO - replace most of anyhow errors with valid errors
-    pub fn diff(&self, params: HashMap<String, String>) -> anyhow::Result<DiffResult> {
+    pub fn diff(&self, _params: HashMap<String, String>) -> anyhow::Result<DiffResult> {
         let left = self.config.left.clone();
         let right = self.config.right.clone();
         let mut store = store::get_store(&left)?;

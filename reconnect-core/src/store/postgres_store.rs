@@ -5,11 +5,11 @@ use anyhow::anyhow;
 use anyhow::Result as AResult;
 use chrono::Utc;
 use lazy_static::lazy_static;
-use log::{info, warn};
+use log::{info};
 use postgres::{Client, Row};
 use rust_decimal::Decimal;
-use std::any::Any;
-use std::cmp::{max, min};
+
+
 use std::collections::{HashMap, HashSet};
 use tera::Context;
 
@@ -39,7 +39,7 @@ impl PostgresStore {
     ) -> anyhow::Result<Self> {
         let conn_string = format!("host={host} port={port} dbname={dbname} user={username} password={password}");
         //Connection
-        let mut client = Client::connect(&conn_string, postgres::NoTls).map_err(|e| anyhow!(e))?;
+        let client = Client::connect(&conn_string, postgres::NoTls).map_err(|e| anyhow!(e))?;
 
         Ok(Self {
             host,
@@ -177,7 +177,7 @@ impl PostgresStore {
     pub(crate) fn get_agg_count_and_checksums(
         &mut self,
         config: &TableConfig,
-        params: HashMap<String, String>,
+        _params: HashMap<String, String>,
     ) -> AResult<Segment> {
         let mut context = Context::new();
         context.insert("table", &config.table);

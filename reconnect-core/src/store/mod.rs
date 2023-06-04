@@ -1,7 +1,7 @@
 use crate::config::TableConfig;
 use crate::store::postgres_store::PostgresStore;
 use lazy_static::lazy_static;
-use std::any::Any;
+
 use std::collections::HashMap;
 use tera::Tera;
 

@@ -10,6 +10,6 @@ lazy_static! {
     };
 }
 
-pub fn populate_placeholders(path: &Path) {
+pub fn populate_placeholders(_path: &Path) {
     todo!()
 }

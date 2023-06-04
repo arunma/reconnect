@@ -1,11 +1,11 @@
 use crate::helpers::CONF_TEMPLATES;
 use anyhow::anyhow;
 use dotenv::dotenv;
-use reconnect_core::config::{DiffConfig, TableConfig};
+use reconnect_core::config::{DiffConfig};
 use reconnect_core::differ::Differ;
 use std::env;
 use std::time::Instant;
-use tera::{Context, Tera};
+use tera::{Context};
 
 pub mod helpers;
 
