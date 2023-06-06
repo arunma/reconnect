@@ -1,19 +1,17 @@
 use crate::config::TableConfig;
 use crate::store::postgres_store::PostgresStore;
-use lazy_static::lazy_static;
 
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use tera::Tera;
 
 pub mod postgres_store;
 
-lazy_static! {
-    pub static ref SQL_TEMPLATES: Tera = {
-        let mut tera = Tera::new("../templates/**/*").unwrap();
-        tera.autoescape_on(vec![]);
-        tera
-    };
-}
+pub static SQL_TEMPLATES: Lazy<Tera> = Lazy::new(|| {
+    let mut tera = Tera::new("../templates/**/*").unwrap();
+    tera.autoescape_on(vec![]);
+    tera
+});
 
 enum StoreType {
     Postgres,

@@ -5,6 +5,7 @@ use reconnect_core::config::DiffConfig;
 use reconnect_core::differ::Differ;
 use reconnect_datagen::prepare_database;
 use std::env;
+use std::path::Path;
 use std::time::Instant;
 use tera::Context;
 
@@ -14,7 +15,8 @@ pub mod helpers;
 pub fn test_multi_store_diff() -> anyhow::Result<()> {
     //Populate template with credential variables
     dotenv().ok();
-    prepare_database(10_000)?;
+    let root_path = Path::new("../bench_data");
+    prepare_database(root_path, 10_000)?;
 
     let mut context = Context::new();
     for (key, value) in env::vars() {

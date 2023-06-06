@@ -3,17 +3,17 @@ use anyhow::anyhow;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use datagen::prepare_database;
 use dotenv::dotenv;
+use lazy_static::lazy::Lazy;
 use lazy_static::lazy_static;
+use reconnect_datagen::prepare_database;
 use std::env;
 use tera::{Context, Tera};
 
-lazy_static! {
-    pub static ref CONF_TEMPLATES: Tera = {
-        let mut tera = Tera::new("../examples/conf/*").unwrap();
-        tera.autoescape_on(vec![]);
-        tera
-    };
-}
+static CONF_TEMPLATES: Lazy<Tera> = Lazy::new(|| {
+    let mut tera = Tera::new("../examples/conf/*").unwrap();
+    tera.autoescape_on(vec![]);
+    tera
+});
 
 fn bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("postgres_full_table");
