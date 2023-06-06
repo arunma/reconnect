@@ -1,18 +1,22 @@
 use crate::benchmarks::{diff_call, DIFF_PCT, NUM_ROWS_TO_TEST};
 use anyhow::anyhow;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use datagen::prepare_database;
 use dotenv::dotenv;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
+use reconnect_datagen::prepare_database;
 use std::env;
+use std::path::Path;
 use tera::{Context, Tera};
+use tokio::runtime::{Builder, Runtime};
 
-lazy_static! {
-    pub static ref CONF_TEMPLATES: Tera = {
-        let mut tera = Tera::new("../examples/conf/*").unwrap();
-        tera.autoescape_on(vec![]);
-        tera
-    };
+static CONF_TEMPLATES: Lazy<Tera> = Lazy::new(|| {
+    let mut tera = Tera::new("../examples/conf/*").unwrap();
+    tera.autoescape_on(vec![]);
+    tera
+});
+
+fn runtime() -> Runtime {
+    Runtime::new().unwrap()
 }
 
 fn bench(c: &mut Criterion) {
@@ -23,8 +27,9 @@ fn bench(c: &mut Criterion) {
         context.insert(key, &value);
     }
 
+    let root_path = Path::new("../bench_data");
     for num_rows in NUM_ROWS_TO_TEST {
-        if let Err(e) = prepare_database(num_rows) {
+        if let Err(e) = prepare_database(root_path, num_rows) {
             eprintln!("Error preparing database: {:?}", e);
             break;
         }
@@ -41,7 +46,10 @@ fn bench(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new(format!("single_store"), num_rows),
             &num_rows,
-            |b, &i| b.iter(|| diff_call(single_store_config_string.clone())),
+            |b, &i| {
+                b.to_async(runtime())
+                    .iter(|| diff_call(single_store_config_string.clone()))
+            },
         );
 
         let multi_store_config_string = CONF_TEMPLATES
@@ -55,7 +63,10 @@ fn bench(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new(format!("multi_store"), num_rows),
             &num_rows,
-            |b, &i| b.iter(|| diff_call(multi_store_config_string.clone())),
+            |b, &i| {
+                b.to_async(runtime())
+                    .iter(|| diff_call(multi_store_config_string.clone()))
+            },
         );
     }
     group.finish();

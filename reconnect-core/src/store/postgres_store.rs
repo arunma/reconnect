@@ -4,20 +4,21 @@ use crate::store::{RowResult, Segment, SQL_TEMPLATES};
 use anyhow::anyhow;
 use anyhow::Result as AResult;
 use chrono::Utc;
-use lazy_static::lazy_static;
-use log::{info};
-use postgres::{Client, Row};
+use log::info;
 use rust_decimal::Decimal;
 
-
+use bb8::{Pool, PooledConnection, RunError};
+use bb8_postgres::PostgresConnectionManager;
+use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use tera::Context;
+use tokio_postgres::{Config, Error, NoTls, Row};
 
 //FIXME - Most methods must be pub(crate)
-lazy_static! {
-    static ref VALUE_NOT_FOUND: String = String::from("VALUE_NOT_FOUND");
-}
+static VALUE_NOT_FOUND: Lazy<String> = Lazy::new(|| String::from("VALUE_NOT_FOUND"));
 
+#[derive(Debug, Clone)]
 pub struct PostgresStore {
     host: String,
     port: u16,
@@ -25,10 +26,19 @@ pub struct PostgresStore {
     password: String,
     dbname: String,
     params: Option<HashMap<String, String>>,
-    pub client: Client,
+    pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
-impl PostgresStore {
+pub struct PostgresStoreBuilder {
+    host: String,
+    port: u16,
+    username: String,
+    password: String,
+    dbname: String,
+    params: Option<HashMap<String, String>>,
+}
+
+impl PostgresStoreBuilder {
     pub fn new(
         host: String,
         port: u16,
@@ -36,23 +46,61 @@ impl PostgresStore {
         password: String,
         dbname: String,
         params: Option<HashMap<String, String>>,
-    ) -> anyhow::Result<Self> {
-        let conn_string = format!("host={host} port={port} dbname={dbname} user={username} password={password}");
-        //Connection
-        let client = Client::connect(&conn_string, postgres::NoTls).map_err(|e| anyhow!(e))?;
-
-        Ok(Self {
+    ) -> Self {
+        Self {
             host,
             port,
             username,
             password,
             dbname,
             params,
-            client,
-        })
+        }
     }
 
-    pub fn diff_datasets(&mut self, left: &TableConfig, right: &TableConfig) -> anyhow::Result<DiffResult> {
+    pub async fn build(&self) -> anyhow::Result<PostgresStore> {
+        let conn_string = format!(
+            "postgresql://{}:{}@{}:{}/{}",
+            self.username, self.password, self.host, self.port, self.dbname
+        );
+
+        let config = Config::from_str(&conn_string)?;
+        let pg_mgr = PostgresConnectionManager::new(config, tokio_postgres::NoTls);
+        let pool = Pool::builder().max_size(10).build(pg_mgr).await?;
+
+        Ok(PostgresStore {
+            host: self.host.clone(),
+            port: self.port,
+            username: self.username.clone(),
+            password: self.password.clone(),
+            dbname: self.dbname.clone(),
+            params: self.params.clone(),
+            pool,
+        })
+    }
+}
+
+impl PostgresStore {
+    pub fn builder(
+        host: String,
+        port: u16,
+        username: String,
+        password: String,
+        dbname: String,
+        params: Option<HashMap<String, String>>,
+    ) -> PostgresStoreBuilder {
+        PostgresStoreBuilder::new(host, port, username, password, dbname, params)
+    }
+
+    pub async fn pool(&self) -> Pool<PostgresConnectionManager<NoTls>> {
+        self.pool.clone()
+    }
+
+    pub async fn connection(&self) -> AResult<PooledConnection<'_, PostgresConnectionManager<NoTls>>> {
+        let conn = self.pool.get().await?;
+        Ok(conn)
+    }
+
+    pub async fn diff_datasets(&mut self, left: &TableConfig, right: &TableConfig) -> anyhow::Result<DiffResult> {
         let mut context = tera::Context::new();
         context.insert("left_table", &left.table);
         context.insert("left_alias", &left.alias.to_uppercase());
@@ -103,7 +151,7 @@ impl PostgresStore {
         //println!("Context is ready. Attempting to render SQL");
         let query = SQL_TEMPLATES.render("single_store_diff_postgres.sql", &context)?;
         //println!("Query is ready. Attempting to execute \n {}", query);
-        let rows = self.client.query(query.as_str(), &[])?;
+        let rows = self.connection().await?.query(query.as_str(), &[]).await?;
 
         let headers = rows[0]
             .columns()
@@ -174,8 +222,8 @@ impl PostgresStore {
     }
 
     //TODO - Need to add instrumentation/tracing for this
-    pub(crate) fn get_agg_count_and_checksums(
-        &mut self,
+    pub(crate) async fn get_agg_count_and_checksums(
+        &self,
         config: &TableConfig,
         _params: HashMap<String, String>,
     ) -> AResult<Segment> {
@@ -192,7 +240,7 @@ impl PostgresStore {
 
         info!("Agg Count and checksum query: {}", query);
 
-        let rows = self.client.query(query.as_str(), &[]).unwrap();
+        let rows = self.connection().await?.query(query.as_str(), &[]).await?;
 
         let row = rows
             .get(0)
@@ -207,8 +255,8 @@ impl PostgresStore {
         })
     }
 
-    pub(crate) fn get_keys_and_checksums(
-        &mut self,
+    pub(crate) async fn get_keys_and_checksums(
+        &self,
         config: &TableConfig,
         seg_min: String,
         seg_max: String,
@@ -228,7 +276,7 @@ impl PostgresStore {
 
         info!("Agg Count and checksum query: {}", query);
 
-        let rows = self.client.query(query.as_str(), &[]).unwrap();
+        let rows = self.connection().await?.query(query.as_str(), &[]).await?;
 
         let mut kcs: HashSet<String> = HashSet::new();
 
@@ -239,7 +287,11 @@ impl PostgresStore {
         Ok(kcs)
     }
 
-    pub(crate) fn get_rows_by_keys(&mut self, config: &TableConfig, diff_keys: &HashSet<String>) -> AResult<RowResult> {
+    pub(crate) async fn get_rows_by_keys(
+        &self,
+        config: &TableConfig,
+        diff_keys: &HashSet<String>,
+    ) -> AResult<RowResult> {
         let mut context = Context::new();
         context.insert("table", &config.table);
         context.insert("alias", &config.alias.to_uppercase());
@@ -253,10 +305,7 @@ impl PostgresStore {
 
         info!("Get rows by keys query: {}", query);
 
-        let rows = self
-            .client
-            .query(&query, &[])
-            .map_err(|e| anyhow!("Error getting rows by keys: {}", e))?;
+        let rows = self.connection().await?.query(query.as_str(), &[]).await?;
 
         let mut row_results = HashMap::new();
         for row in rows {

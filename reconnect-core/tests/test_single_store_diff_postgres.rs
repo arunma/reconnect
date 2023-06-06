@@ -1,16 +1,16 @@
 use crate::helpers::CONF_TEMPLATES;
 use anyhow::anyhow;
 use dotenv::dotenv;
-use reconnect_core::config::{DiffConfig};
+use reconnect_core::config::DiffConfig;
 use reconnect_core::differ::Differ;
 use std::env;
 use std::time::Instant;
-use tera::{Context};
+use tera::Context;
 
 pub mod helpers;
 
-#[test]
-pub fn test_single_store_diff() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn test_single_store_diff() -> anyhow::Result<()> {
     //Populate template with credential variables
     dotenv().ok();
     let mut context = Context::new();
@@ -54,7 +54,7 @@ pub fn test_single_store_diff() -> anyhow::Result<()> {
 
     //Generate Single table template
     let differ = Differ::new(config);
-    let diff_result = differ.diff(std::collections::HashMap::new())?;
+    let diff_result = differ.diff(std::collections::HashMap::new()).await?;
     println!("Diff Result count: {:?}", diff_result.rows.len());
 
     let end = start.elapsed();

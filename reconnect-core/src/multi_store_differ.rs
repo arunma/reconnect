@@ -1,11 +1,12 @@
-use crate::config::{DiffConfig};
+use crate::config::DiffConfig;
 use crate::differ::DiffResult;
 use crate::store;
 use crate::store::postgres_store::PostgresStore;
-use crate::store::RowResult;
+use crate::store::{RowResult, Segment};
 use anyhow::Result as AResult;
 use log::{error, info};
 use std::collections::{HashMap, HashSet};
+use std::thread;
 
 pub struct MultiStoreDiffer {
     config: DiffConfig,
@@ -16,20 +17,53 @@ impl MultiStoreDiffer {
         Self { config }
     }
 
-    pub fn diff(&self, params: HashMap<String, String>) -> AResult<DiffResult> {
-        let mut left_store = store::get_store(&self.config.left)?;
-        let mut right_store = store::get_store(&self.config.right)?;
-        self.diff_datasets(&mut left_store, &mut right_store, params)
+    pub async fn diff(&self, params: HashMap<String, String>) -> AResult<DiffResult> {
+        let mut left_store = store::get_store(&self.config.left).await?;
+        let mut right_store = store::get_store(&self.config.right).await?;
+        self.diff_datasets(&mut left_store, &mut right_store, params).await
     }
-    fn diff_datasets(
+
+    async fn diff_datasets(
         &self,
-        left_store: &mut PostgresStore,
-        right_store: &mut PostgresStore,
+        left_store: &PostgresStore,
+        right_store: &PostgresStore,
         params: HashMap<String, String>,
     ) -> AResult<DiffResult> {
         //TODO - This has to be two calls - One fore global segment and then branched recursive segment
-        let lsegment = left_store.get_agg_count_and_checksums(&self.config.left, params.clone())?;
-        let rsegment = right_store.get_agg_count_and_checksums(&self.config.right, params.clone())?;
+
+        let (tx1, rx) = tokio::sync::mpsc::channel::<AResult<Segment>>(2);
+        let tx2 = tx1.clone();
+
+        let lstore = left_store.clone();
+        let rstore = right_store.clone();
+        let left_config = self.config.left.clone();
+        let right_config = self.config.right.clone();
+
+        let ljoin_handle =
+            tokio::spawn(async move { lstore.get_agg_count_and_checksums(&left_config, HashMap::new()).await });
+
+        let rjoin_handle =
+            tokio::spawn(async move { rstore.get_agg_count_and_checksums(&right_config, HashMap::new()).await });
+
+        let (lsegment, rsegment) = tokio::try_join!(ljoin_handle, rjoin_handle)
+            .expect("Failure while joining handles of left and right store");
+
+        let (lsegment, rsegment) = (lsegment?, rsegment?);
+
+        /*        let lsegment = left_store
+            .get_agg_count_and_checksums(&self.config.left, params.clone())
+            .await?;
+        let rsegment = right_store
+            .get_agg_count_and_checksums(&self.config.right, params.clone())
+            .await?;*/
+
+        /*       tokio::spawn(async move {
+            let lsegment = left_store.get_agg_count_and_checksums(&self.config.left, params.clone());
+        });
+
+        tokio::spawn(async move {
+            let rsegment = right_store.get_agg_count_and_checksums(&self.config.right, params.clone());
+        });*/
 
         let lconfig = &self.config.left;
         let rconfig = &self.config.right;
@@ -46,13 +80,32 @@ impl MultiStoreDiffer {
         }
 
         //FIXME - This isn't optimal at all, at the moment but let's get something out first
-        let lkcs = left_store.get_keys_and_checksums(&self.config.left, lsegment.min, lsegment.max)?;
-        let rkcs = right_store.get_keys_and_checksums(&self.config.right, rsegment.min, rsegment.max)?;
+        let lstore = left_store.clone();
+        let rstore = right_store.clone();
+        let left_config = self.config.left.clone();
+        let right_config = self.config.right.clone();
+
+        let ljoin_handle = tokio::spawn(async move {
+            lstore
+                .get_keys_and_checksums(&left_config, lsegment.min, lsegment.max)
+                .await
+        });
+
+        let rjoin_handle = tokio::spawn(async move {
+            rstore
+                .get_keys_and_checksums(&right_config, rsegment.min, rsegment.max)
+                .await
+        });
+
+        let (lkcs, rkcs) = tokio::try_join!(ljoin_handle, rjoin_handle)
+            .expect("Failure while joining handles of left and right store");
+
+        let (lkcs, rkcs) = (lkcs?, rkcs?);
 
         let diff_keys = self.get_diff_keys(&lkcs, &rkcs);
         info!("Diff keys: {:?}", diff_keys);
         //println!("Diff keys: {:?}", diff_keys);
-        let (lrow_result, rrow_result) = self.fetch_diff_rows(left_store, right_store, &diff_keys)?;
+        let (lrow_result, rrow_result) = self.fetch_diff_rows(&left_store, &right_store, &diff_keys).await?;
         return self.build_results_from_values(lrow_result, rrow_result, headers, diff_keys);
     }
     fn build_results_from_values(
@@ -159,14 +212,14 @@ impl MultiStoreDiffer {
     }
 
     //TODO - Need to make this generic
-    fn fetch_diff_rows(
+    async fn fetch_diff_rows(
         &self,
-        lstore: &mut PostgresStore,
-        rstore: &mut PostgresStore,
+        lstore: &PostgresStore,
+        rstore: &PostgresStore,
         diff_keys: &HashSet<String>,
     ) -> AResult<(RowResult, RowResult)> {
-        let left_rows = lstore.get_rows_by_keys(&self.config.left, diff_keys)?;
-        let right_rows = rstore.get_rows_by_keys(&self.config.right, diff_keys)?;
+        let left_rows = lstore.get_rows_by_keys(&self.config.left, diff_keys).await?;
+        let right_rows = rstore.get_rows_by_keys(&self.config.right, diff_keys).await?;
         Ok((left_rows, right_rows))
     }
 

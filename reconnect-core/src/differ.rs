@@ -25,15 +25,15 @@ impl Differ {
         Self { config }
     }
 
-    pub fn diff(&self, params: HashMap<String, String>) -> AResult<DiffResult> {
+    pub async fn diff(&self, params: HashMap<String, String>) -> AResult<DiffResult> {
         if self.config.left.connection_uri == self.config.right.connection_uri {
             //TODO: Implement single store diff
             let single_store_diff = SingleStoreDiffer::new(self.config.clone());
-            return single_store_diff.diff(params);
+            return single_store_diff.diff(params).await;
         } else {
             info!("MULTI store diff ");
             let multi_store_diff = MultiStoreDiffer::new(self.config.clone());
-            return multi_store_diff.diff(params);
+            return multi_store_diff.diff(params).await;
         }
 
         Ok(DiffResult {
