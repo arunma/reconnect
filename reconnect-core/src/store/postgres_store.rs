@@ -224,7 +224,7 @@ impl PostgresStore {
     //TODO - Need to add instrumentation/tracing for this
     pub(crate) async fn get_agg_count_and_checksums(
         &self,
-        config: &TableConfig,
+        config: TableConfig,
         _params: HashMap<String, String>,
     ) -> AResult<Segment> {
         let mut context = Context::new();

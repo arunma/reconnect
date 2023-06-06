@@ -39,16 +39,14 @@ impl MultiStoreDiffer {
         let left_config = self.config.left.clone();
         let right_config = self.config.right.clone();
 
-        let ljoin_handle =
-            tokio::spawn(async move { lstore.get_agg_count_and_checksums(&left_config, HashMap::new()).await });
+        let ljoin_handle = tokio::spawn(async move { lstore.get_agg_count_and_checksums(left_config, HashMap::new()) });
 
         let rjoin_handle =
-            tokio::spawn(async move { rstore.get_agg_count_and_checksums(&right_config, HashMap::new()).await });
+            tokio::spawn(async move { rstore.get_agg_count_and_checksums(right_config, HashMap::new()) });
 
-        let (lsegment, rsegment) = tokio::try_join!(ljoin_handle, rjoin_handle)
-            .expect("Failure while joining handles of left and right store");
+        let (lsegment, rsegment) = tokio::join!(ljoin_handle, rjoin_handle);
 
-        let (lsegment, rsegment) = (lsegment?, rsegment?);
+        let (lsegment, rsegment) = (lsegment?.await?, rsegment?.await?);
 
         /*        let lsegment = left_store
             .get_agg_count_and_checksums(&self.config.left, params.clone())
