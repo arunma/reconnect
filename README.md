@@ -1,6 +1,6 @@
 # Reconnect
 
-Lightweight and highly performant reconciliation toolkit
+Lightweight and highly performant reconciliation framework
 
 ## Benchmarks
 
